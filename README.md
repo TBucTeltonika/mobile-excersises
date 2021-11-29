@@ -5,6 +5,8 @@ patikrinti ar prisijunges irenginys prie modemo - "dmesg | grep -A 1 -B 12 ttyUS
 
 prisijungimas prie irenginio - "socat - /dev/ttyUSB2,crnl"
 
+Jeigu yra atinout programa - "atinout - /dev/ttyUSB3 -
+
 AT+CPIN?
 
 +CPIN: READY
