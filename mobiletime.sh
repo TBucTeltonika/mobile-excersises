@@ -59,5 +59,7 @@ for NAME in ${DEVICES}; do
     set -x
     date --set "20"${AT_OUTPUT:10:2}"-"${AT_OUTPUT:13:2}"-"${AT_OUTPUT:16:2}" "${AT_OUTPUT:19:8}
     { set +x; } 2>/dev/null
+    
+    break
 
 done
