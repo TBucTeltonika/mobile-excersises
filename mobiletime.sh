@@ -1,65 +1,63 @@
 #!/bin/sh
 #1. Parašyti scriptą/programą kuri nustato router'io laiką/datą iš operatoriaus tinklo
+CFG_FILE=modem_info
+CFG_PATH=/tmp/
+DEVICE_PATH=/sys/bus/usb/devices/
 
-##TODO: Move to a seprate file and include it!
-#will set DEV_NAME if its a modem.
-set_modem_device() {
-        USB_PORT=${line##*] usb } # Remove the left part.
-        USB_PORT=${USB_PORT%%:*}  # Remove the right part.
-
-        OUTPUT=$(dmesg | grep -A 1 "$USB_PORT:$USB_CHAN" | tail -1)
-        DEV_NAME=${OUTPUT##*now attached to } # Remove the left part.
+getTTY() {
+    IFPATH=$(readlink -f $DEVICE_PATH$1)
+    ttyDEV=$(ls $IFPATH | grep "ttyUSB*")  
+}
+get_devices() {
+    DEVICES=""
+    i=0
+    while uci -c $CFG_PATH get $CFG_FILE.@serial[$i] &>/dev/null; do
+        CDEVICE=$(uci -c $CFG_PATH get $CFG_FILE.@serial[$i].device)
+        DEVICES="${DEVICES} $CDEVICE"
+        i=$((i + 1))
+    done
 }
 
-#Sets USB_CHAN if device is known.
-set_USB_channel() {
-        case $idVendor in
-        #TELTTONIKA
-        *2c7c*)                
-                case $idProduct in
-                #TRM240
-                *0121*)
-                        USB_CHAN="1.3" ;;
-                esac
-                ;;
-        esac
-}
-
-get_active_device() {
-        D_OUTPUT=$(dmesg | grep 'New USB device found,')
-        temp=$IFS
-
-        IFS=$'\n'
-        for line in $D_OUTPUT; do
-                #echo "$line"
-                idVendor=${line##* idVendor=} # Remove the left part.
-                idVendor=${idVendor%%,*}      # Remove the right part.
-                idProduct=${line##* idProduct=} # Remove the left part.
-                idProduct=${idProduct%%,*}      # Remove the right part.
-
-                set_USB_channel
-                [ ! -z "$USB_CHAN" ] && set_modem_device
-                [ ! -z "$DEV_NAME" ] && break 1
-        done
-
-        IFS=$temp
-}
-
-get_active_device
-
-[ ! -z "$DEV_NAME" ] || (echo "Modem not found"; exit 1)
-
-MODEM_DEVICE="/dev/$DEV_NAME"
-MODEM_OUTPUT=$(echo AT | atinout - $MODEM_DEVICE -)
-case $MODEM_OUTPUT in
-*OK*)
-        #echo "Modem is found: $MODEM_DEVICE"
-        TIME_OUTPUT=$(echo AT+CCLK? | atinout - $MODEM_DEVICE -)
-        set -x
-        date --set "20"${TIME_OUTPUT:9:2}"-"${TIME_OUTPUT:12:2}"-"${TIME_OUTPUT:15:2}" "${TIME_OUTPUT:18:8}
-        { set +x; } 2>/dev/null
+exec_AT_comm() {
+    OK=0
+    echo "$1"
+    AT_OUTPUT=$(echo $1 | atinout - /dev/$ttyDEV -) 
+    echo "$AT_OUTPUT"
+    case $AT_OUTPUT in
+    *ERROR*)
+        OK=0
+        echo "$AT_OUTPUT"
         ;;
-*)
-        echo "Something went wrong!"
+    *OK)
+        OK=1
         ;;
-esac
+    *)
+        OK=0
+        ;;
+    esac 
+}
+
+get_devices
+
+for NAME in ${DEVICES}; do
+    getTTY ${NAME}
+    echo "$ttyDEV"
+
+    exec_AT_comm "ATE0"
+    if [ $OK -eq 0 ]; then continue; fi 
+
+    exec_AT_comm "AT+CPIN?"
+    if [ $OK -eq 0 ]; then continue; fi 
+
+    exec_AT_comm "AT+CREG?"
+    if [ $OK -eq 0 ]; then continue; fi
+        
+    exec_AT_comm "AT+CCLK?"
+    if [ $OK -eq 0 ]; then continue; fi 
+
+    #RUTX11
+    set -x
+    date --set "20"${AT_OUTPUT:10:2}"-"${AT_OUTPUT:13:2}"-"${AT_OUTPUT:16:2}" "${AT_OUTPUT:19:8}
+    { set +x; } 2>/dev/null
+
+done
