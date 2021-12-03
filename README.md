@@ -1,4 +1,13 @@
 # mobile-excersises
+Requirement to run the scripts.
+
+00-modem_parse.sh is a hotplug script for collecting device information when they are added/removed.
+
+to install it: put it into /etc/hotplug.d/usb/ folder in your router.
+
+All projects will look for a one of the pre-configured plugged in modems and try to run on them.
+
+# mobile-excersises
 
 **1. Patikrinti ar SIM kortelė užrakinta su PIN**
 patikrinti ar prisijunges irenginys prie modemo - "dmesg | grep -A 1 -B 12 ttyUSB"
