@@ -93,5 +93,7 @@ for NAME in ${DEVICES}; do
 
         #restart device to commit the changes.
         ubus call network restart
+        
+        break
 
 done
