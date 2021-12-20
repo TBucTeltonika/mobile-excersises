@@ -1,6 +1,8 @@
 # mobile-excersises
 Requirement to run the scripts.
 
+atinout installed.
+
 00-modem_parse.sh is a hotplug script for collecting device information when they are added/removed.
 
 to install it: put it into /etc/hotplug.d/usb/ folder in your router.
