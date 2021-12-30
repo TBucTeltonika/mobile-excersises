@@ -2,7 +2,6 @@
 #Pabandykit į gcont per ubus'ą updatint kiek telpa sms'ų
 get_sms_limit() {
     AT_OUTPUT=$(gsmctl -A ""AT+CPMS?"")
-    echo "$AT_OUTPUT"
     counter=0
     storage_counter=0
     json_str="{"
@@ -22,7 +21,6 @@ get_sms_limit() {
         esac
 
         if [ $counter -eq 2 ]; then
-            echo "$iter"
             storage_counter=$((storage_counter + 1))
 
             json_str="${json_str}\\\"Storage${storage_counter}\\\":${iter},"
@@ -32,13 +30,10 @@ get_sms_limit() {
     #close the brackets
     json_str=${json_str::-2}
     json_str="${json_str}}"
-    echo ${json_str}
 }
 add_to_gcont(){
     result=$(ubus call gcont delete '{"array":"sms_storage"}')
-    echo ${result}
     result=$(ubus call gcont add ''{\"array\":\"sms_storage\",\"json\":\"${json_str}\"}'')
-    echo ${result}
 }
 #makes json_str to be written:
 get_sms_limit
