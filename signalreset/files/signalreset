@@ -4,7 +4,7 @@
 THRESHOLD=$(uci -q get signalreset.signalreset.threshold)
 CHECK_PERIOD=$(uci -q get signalreset.signalreset.check_period)
 reconnect() {
-    AT_RESULT=$(gsmctl -A ""AT+COPS=2"" -O $1)
+    AT_RESULT=$(gsmctl -A ""AT+COPS=2"" -O "$1")
 
     case "$AT_RESULT" in
     *OK*) logger "[SIGNALRESET] $1 modem turned OFF" ;;
@@ -12,7 +12,7 @@ reconnect() {
     esac
 
     sleep 5
-    AT_RESULT=$(gsmctl -A ""AT+COPS=0"" -O $1)
+    AT_RESULT=$(gsmctl -A ""AT+COPS=0"" -O "$1")
     case "$AT_RESULT" in
     *OK*) logger "[SIGNALRESET] $1 modem turned ON" ;;
     *) logger "[SIGNALRESET] ERROR turning $1 modem ON" ;;
@@ -22,7 +22,7 @@ reconnect() {
 
 #checks if the modem is active.
 is_active() {
-    AT_RESULT=$(gsmctl -A ""AT"" -O $1)
+    AT_RESULT=$(gsmctl -A ""AT"" -O "$1")
 
     case "$AT_RESULT" in
     *OK*) RESULT=1 ;;
@@ -41,11 +41,10 @@ parse_modems() {
         while json_is_a ${idx} object; do ## iterate over data inside "lan" object
             json_get_var section $idx
             json_select $idx
-            json_get_var id id $section
+            json_get_var id id 
 
-            echo "$id"
-            is_active $id
-            if [[ $RESULT -eq 1 ]]; then
+            is_active "$id"
+            if [ $RESULT -eq 1 ]; then
                 ACTIVE_MODEMS="${ACTIVE_MODEMS} $id"
                 echo "added: $id"
             fi
@@ -62,14 +61,14 @@ parse_modems
 
 while true; do
     for MODEM in ${ACTIVE_MODEMS}; do
-        signal=$(gsmctl --signal -O $MODEM)
+        signal=$(gsmctl --signal -O "$MODEM")
         logger "[SIGNALRESET] $MODEM modem signal: $signal"
-        if [[ $signal -lt $THRESHOLD ]]; then
+        if [ "$signal" -lt "$THRESHOLD" ]; then
             logger "[SIGNALRESET] $signal is less than $THRESHOLD"
             logger "[SIGNALRESET] Restarting modem.."
-            reconnect $MODEM
+            reconnect "$MODEM"
         fi
     done
 
-    sleep $CHECK_PERIOD
+    sleep "$CHECK_PERIOD"
 done
