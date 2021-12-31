@@ -1,4 +1,5 @@
 #!/bin/sh
+. /usr/share/libubox/jshn.sh
 
 THRESHOLD=$(uci -q get signalreset.signalreset.threshold)
 CHECK_PERIOD=$(uci -q get signalreset.signalreset.check_period)
@@ -6,25 +7,17 @@ reconnect() {
     AT_RESULT=$(gsmctl -A ""AT+COPS=2"" -O $1)
 
     case "$AT_RESULT" in
-*OK*) logger "[SIGNALRESET] $1 modem turned OFF" ;;
-*      ) logger "[SIGNALRESET] ERROR turning $1 modem OFF" ;;
-esac
+    *OK*) logger "[SIGNALRESET] $1 modem turned OFF" ;;
+    *) logger "[SIGNALRESET] ERROR turning $1 modem OFF" ;;
+    esac
 
     sleep 5
     AT_RESULT=$(gsmctl -A ""AT+COPS=0"" -O $1)
     case "$AT_RESULT" in
-*OK*) logger "[SIGNALRESET] $1 modem turned ON" ;;
-*      ) logger "[SIGNALRESET] ERROR turning $1 modem ON" ;;
-esac
+    *OK*) logger "[SIGNALRESET] $1 modem turned ON" ;;
+    *) logger "[SIGNALRESET] ERROR turning $1 modem ON" ;;
+    esac
 
-}
-
-#read modems json portion from board.json file
-read_modem_json() {
-    board=$(cat /etc/board.json)
-
-    board=${board#*\"modems\": }
-    modems=${board%]*}
 }
 
 #checks if the modem is active.
@@ -32,32 +25,39 @@ is_active() {
     AT_RESULT=$(gsmctl -A ""AT"" -O $1)
 
     case "$AT_RESULT" in
-*OK*) RESULT=1 ;;
-*      ) RESULT=0 ;;
-esac
+    *OK*) RESULT=1 ;;
+    *) RESULT=0 ;;
+    esac
 }
 
-#parses modems and writes modems which are active into ACTIVE_MODEMS space separated array.
+#parses modems from json file and adds them to ACTIVE_MODEMS array.
 parse_modems() {
-    modemsc=${modems}
-    run=1
-    ACTIVE_MODEMS=""
+    json_init
+    json_load_file /etc/board.json
 
-    while [ $run -eq 1 ]; do
-        iter=${modemsc#*\"id\": \"}
-        iter=${iter%%\"*}
+    if json_is_a modems array; then
+        json_select modems
+        idx=1
+        while json_is_a ${idx} object; do ## iterate over data inside "lan" object
+            json_get_var section $idx
+            json_select $idx
+            json_get_var id id $section
 
-        is_active $iter
-        if [[ $RESULT -eq 1 ]]; then
-        ACTIVE_MODEMS="${ACTIVE_MODEMS} $iter"
-        fi
-        modemsc="${modemsc#*$iter\",}"
-        [[ ! -z "$iter" -a "$iter" != " " ]] && run=0 || run=1
-    done
-    logger "[SIGNALRESET] Active modems: $ACTIVE_MODEMS"
+            echo "$id"
+            is_active $id
+            if [[ $RESULT -eq 1 ]]; then
+                ACTIVE_MODEMS="${ACTIVE_MODEMS} $id"
+                echo "added: $id"
+            fi
+
+            idx=$((idx + 1))
+            json_select ".."
+        done
+    fi
+    echo "Parse done"
+
 }
 
-read_modem_json
 parse_modems
 
 while true; do
@@ -70,7 +70,6 @@ while true; do
             reconnect $MODEM
         fi
     done
-    
-	sleep $CHECK_PERIOD
-done
 
+    sleep $CHECK_PERIOD
+done
