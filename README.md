@@ -90,8 +90,8 @@ Sending:
 AT+CMGF=1 -text mode.
 
 AT+CSCS="GSM" - GSM Char formatas
-
-AT+CMGS="869213067"
+#telefono numeris:
+AT+CMGS="8xxxxxxxx"
 
 Ateiti turi > simbolis ir "CTRL+V CTRL+Z" indikuoti pabaiga. Normaliai ctrl+Z jeigu klientas neperima C+Z.
 
